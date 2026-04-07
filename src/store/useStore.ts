@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import { User, Goal, DailyTask, TimerState, DEFAULT_SETTINGS } from '../types';
 
+type DashboardMode = 'daily' | 'longterm';
+
 interface AppState {
   // Auth
   user: User | null;
@@ -20,8 +22,10 @@ interface AppState {
   pomodorosCompletedToday: number;
 
   // Daily Tasks
+  dashboardMode: DashboardMode;
   dailyTasks: DailyTask[];
   activeDailyTaskId: string | null;
+  activeGoalId: string | null; // For longterm mode — which goal to start timer for
 
   // Actions
   initializeApp: () => Promise<void>;
@@ -31,6 +35,7 @@ interface AppState {
 
   fetchGoals: () => Promise<void>;
   fetchDailyTasks: (date?: string) => Promise<void>;
+  setDashboardMode: (mode: DashboardMode) => void;
 
   startTimer: () => void;
   pauseTimer: () => void;
@@ -43,6 +48,7 @@ interface AppState {
 
   toggleTaskComplete: (taskId: string) => Promise<void>;
   setActiveDailyTask: (taskId: string | null) => void;
+  setActiveGoalId: (goalId: string | null) => void;
 }
 
 export const useStore = create<AppState>((set, get) => ({
@@ -56,8 +62,10 @@ export const useStore = create<AppState>((set, get) => ({
   currentSessionId: null,
   isBreak: false,
   pomodorosCompletedToday: 0,
+  dashboardMode: 'daily',
   dailyTasks: [],
   activeDailyTaskId: null,
+  activeGoalId: null,
 
   initializeApp: async () => {
     try {
@@ -137,8 +145,10 @@ export const useStore = create<AppState>((set, get) => ({
       timeRemaining: 25 * 60,
       currentSessionId: null,
       isBreak: false,
+      dashboardMode: 'daily',
       dailyTasks: [],
       activeDailyTaskId: null,
+      activeGoalId: null,
       pomodorosCompletedToday: 0,
     });
   },
@@ -187,12 +197,24 @@ export const useStore = create<AppState>((set, get) => ({
     set({ dailyTasks: tasks });
   },
 
+  setDashboardMode: (mode) => set({ dashboardMode: mode }),
+  setActiveGoalId: (goalId) => set({ activeGoalId: goalId }),
+
   startTimer: () => {
-    const { user, activeGoal } = get();
+    const { user, activeGoal, dashboardMode, activeGoalId, goals } = get();
     if (!user) return;
 
     const focusDuration = user.settings.focus_duration || 25 * 60;
-    const goalId = activeGoal?.id || '__daily__';
+
+    // Determine which goal to track this session against
+    let goalId: string;
+    if (dashboardMode === 'longterm' && activeGoalId) {
+      goalId = activeGoalId;
+    } else if (activeGoal) {
+      goalId = activeGoal.id;
+    } else {
+      goalId = '__daily__';
+    }
 
     // Create session in Supabase
     supabase.from('sessions').insert({
@@ -355,11 +377,11 @@ export const useStore = create<AppState>((set, get) => ({
   stopTimerOnBackground: () => {
     const { timerState, isBreak } = get();
     if (timerState === 'running' && !isBreak) {
-      // Discard the session — timer stops when app is backgrounded
-      get().resetTimer();
-    } else if (isBreak) {
-      // Just stop the break
-      get().skipBreak();
+      // Pause the session — user can resume when they return
+      get().pauseTimer();
+    } else if (timerState === 'running' && isBreak) {
+      // Pause break too
+      set({ timerState: 'paused' });
     }
   },
 
