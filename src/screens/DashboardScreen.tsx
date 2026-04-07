@@ -13,10 +13,7 @@ const WEB_APP_URL = 'https://effortos-zeta.vercel.app';
 
 export function DashboardScreen() {
   const webViewRef = useRef<WebView>(null);
-  const user = useStore(s => s.user);
 
-  // Inject the Supabase session into the WebView so the user is auto-logged in.
-  // This passes the access token to the web app which can pick it up.
   const injectedJS = `
     (function() {
       // Signal to the web app that it's inside the mobile app
