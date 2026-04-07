@@ -13,6 +13,7 @@ import { AuthScreen } from './src/screens/AuthScreen';
 import { TimerScreen } from './src/screens/TimerScreen';
 import { TasksScreen } from './src/screens/TasksScreen';
 import { GoalsScreen } from './src/screens/GoalsScreen';
+import { DashboardScreen } from './src/screens/DashboardScreen';
 
 const colors = {
   bg: '#0a0a0f',
@@ -25,13 +26,14 @@ const colors = {
   cyanDim: 'rgba(6,182,212,0.15)',
 };
 
-type Tab = 'timer' | 'tasks' | 'goals';
+type Tab = 'timer' | 'tasks' | 'dashboard' | 'goals';
 
 function TabBar({ activeTab, onTabPress }: { activeTab: Tab; onTabPress: (tab: Tab) => void }) {
   const insets = useSafeAreaInsets();
   const tabs: { id: Tab; label: string; icon: string }[] = [
     { id: 'timer', label: 'Timer', icon: '⏱' },
     { id: 'tasks', label: 'Tasks', icon: '☑' },
+    { id: 'dashboard', label: 'Dashboard', icon: '📊' },
     { id: 'goals', label: 'Goals', icon: '🎯' },
   ];
 
@@ -113,6 +115,7 @@ function MainApp() {
       <SafeAreaView style={styles.content} edges={['top']}>
         {activeTab === 'timer' && <TimerScreen />}
         {activeTab === 'tasks' && <TasksScreen />}
+        {activeTab === 'dashboard' && <DashboardScreen />}
         {activeTab === 'goals' && <GoalsScreen />}
       </SafeAreaView>
       <TabBar activeTab={activeTab} onTabPress={setActiveTab} />
