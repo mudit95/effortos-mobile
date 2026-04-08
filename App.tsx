@@ -11,9 +11,7 @@ import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-
 import { useStore } from './src/store/useStore';
 import { AuthScreen } from './src/screens/AuthScreen';
 import { TimerScreen } from './src/screens/TimerScreen';
-import { TasksScreen } from './src/screens/TasksScreen';
-import { GoalsScreen } from './src/screens/GoalsScreen';
-import { DashboardScreen } from './src/screens/DashboardScreen';
+import { ReportsScreen } from './src/screens/ReportsScreen';
 
 const colors = {
   bg: '#0a0a0f',
@@ -26,15 +24,13 @@ const colors = {
   cyanDim: 'rgba(6,182,212,0.15)',
 };
 
-type Tab = 'timer' | 'tasks' | 'dashboard' | 'goals';
+type Tab = 'timer' | 'reports';
 
 function TabBar({ activeTab, onTabPress }: { activeTab: Tab; onTabPress: (tab: Tab) => void }) {
   const insets = useSafeAreaInsets();
   const tabs: { id: Tab; label: string; icon: string }[] = [
     { id: 'timer', label: 'Timer', icon: '⏱' },
-    { id: 'tasks', label: 'Tasks', icon: '☑' },
-    { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-    { id: 'goals', label: 'Goals', icon: '🎯' },
+    { id: 'reports', label: 'Reports', icon: '📊' },
   ];
 
   return (
@@ -114,9 +110,7 @@ function MainApp() {
     <View style={styles.container}>
       <SafeAreaView style={styles.content} edges={['top']}>
         {activeTab === 'timer' && <TimerScreen />}
-        {activeTab === 'tasks' && <TasksScreen />}
-        {activeTab === 'dashboard' && <DashboardScreen />}
-        {activeTab === 'goals' && <GoalsScreen />}
+        {activeTab === 'reports' && <ReportsScreen />}
       </SafeAreaView>
       <TabBar activeTab={activeTab} onTabPress={setActiveTab} />
     </View>

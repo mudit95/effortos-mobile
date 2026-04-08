@@ -47,8 +47,11 @@ interface AppState {
   stopTimerOnBackground: () => void;
 
   toggleTaskComplete: (taskId: string) => Promise<void>;
+  deleteDailyTask: (taskId: string) => Promise<void>;
   setActiveDailyTask: (taskId: string | null) => void;
   setActiveGoalId: (goalId: string | null) => void;
+  addDailyTask: (title: string, pomodorosTarget?: number) => Promise<void>;
+  addGoal: (title: string) => Promise<void>;
 }
 
 export const useStore = create<AppState>((set, get) => ({
@@ -399,4 +402,53 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   setActiveDailyTask: (taskId) => set({ activeDailyTaskId: taskId }),
+
+  deleteDailyTask: async (taskId) => {
+    const { activeDailyTaskId } = get();
+    await supabase.from('daily_tasks').delete().eq('id', taskId);
+    if (activeDailyTaskId === taskId) set({ activeDailyTaskId: null });
+    get().fetchDailyTasks();
+  },
+
+  addDailyTask: async (title, pomodorosTarget = 1) => {
+    const { user } = get();
+    if (!user || !title.trim()) return;
+
+    const todayKey = new Date().toISOString().split('T')[0];
+    const existing = get().dailyTasks;
+
+    await supabase.from('daily_tasks').insert({
+      user_id: user.id,
+      title: title.trim(),
+      pomodoros_target: pomodorosTarget,
+      date: todayKey,
+      sort_order: existing.length,
+    });
+
+    get().fetchDailyTasks();
+  },
+
+  addGoal: async (title) => {
+    const { user } = get();
+    if (!user || !title.trim()) return;
+
+    await supabase.from('goals').insert({
+      user_id: user.id,
+      title: title.trim(),
+      estimated_sessions_initial: 20,
+      estimated_sessions_current: 20,
+      sessions_completed: 0,
+      user_time_bias: 0,
+      experience_level: 'intermediate',
+      daily_availability: 2,
+      consistency_level: 'medium',
+      confidence_score: 0.6,
+      difficulty: 'moderate',
+      recommended_sessions_per_day: 2,
+      estimated_days: 10,
+      status: 'active',
+    });
+
+    await get().fetchGoals();
+  },
 }));

@@ -1,14 +1,15 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
+  TextInput,
   TouchableOpacity,
   StyleSheet,
   AppState,
   AppStateStatus,
   Vibration,
   ScrollView,
-  FlatList,
+  Alert,
 } from 'react-native';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { colors, spacing, fontSize, radius } from '../lib/theme';
@@ -38,8 +39,13 @@ export function TimerScreen() {
   const setActiveDailyTask = useStore(s => s.setActiveDailyTask);
   const setActiveGoalId = useStore(s => s.setActiveGoalId);
   const toggleTaskComplete = useStore(s => s.toggleTaskComplete);
+  const deleteDailyTask = useStore(s => s.deleteDailyTask);
+  const addDailyTask = useStore(s => s.addDailyTask);
+  const addGoal = useStore(s => s.addGoal);
   const fetchDailyTasks = useStore(s => s.fetchDailyTasks);
   const fetchGoals = useStore(s => s.fetchGoals);
+
+  const [newItemText, setNewItemText] = useState('');
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
@@ -215,21 +221,69 @@ export function TimerScreen() {
             {dashboardMode === 'daily' ? 'Pick a task to focus on' : 'Pick a goal to work on'}
           </Text>
 
+          {/* Add input */}
+          <View style={styles.addRow}>
+            <TextInput
+              style={styles.addInput}
+              placeholder={dashboardMode === 'daily' ? 'Add a task...' : 'Add a goal...'}
+              placeholderTextColor={colors.textMuted}
+              value={newItemText}
+              onChangeText={setNewItemText}
+              onSubmitEditing={async () => {
+                if (!newItemText.trim()) return;
+                if (dashboardMode === 'daily') {
+                  await addDailyTask(newItemText);
+                } else {
+                  await addGoal(newItemText);
+                }
+                setNewItemText('');
+              }}
+              returnKeyType="done"
+            />
+            <TouchableOpacity
+              style={[styles.addButton, !newItemText.trim() && styles.addButtonDisabled]}
+              onPress={async () => {
+                if (!newItemText.trim()) return;
+                if (dashboardMode === 'daily') {
+                  await addDailyTask(newItemText);
+                } else {
+                  await addGoal(newItemText);
+                }
+                setNewItemText('');
+              }}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.addButtonText}>+</Text>
+            </TouchableOpacity>
+          </View>
+
           {dashboardMode === 'daily' ? (
             <ScrollView style={styles.pickerList} showsVerticalScrollIndicator={false}>
               {incompleteTasks.length === 0 && (
-                <Text style={styles.emptyText}>No tasks for today — add them from the web dashboard</Text>
+                <Text style={styles.emptyText}>No tasks yet — add one above</Text>
               )}
               {incompleteTasks.map(task => (
                 <TouchableOpacity
                   key={task.id}
                   style={[styles.pickerItem, task.id === activeDailyTaskId && styles.pickerItemActive]}
                   onPress={() => setActiveDailyTask(task.id === activeDailyTaskId ? null : task.id)}
-                  onLongPress={() => toggleTaskComplete(task.id)}
+                  onLongPress={() => {
+                    Alert.alert(task.title, '', [
+                      { text: 'Cancel', style: 'cancel' },
+                      { text: 'Mark Complete', onPress: () => toggleTaskComplete(task.id) },
+                      { text: 'Delete', style: 'destructive', onPress: () => deleteDailyTask(task.id) },
+                    ]);
+                  }}
                   activeOpacity={0.7}
                 >
                   <View style={styles.pickerItemLeft}>
-                    <View style={[styles.pickerDot, task.id === activeDailyTaskId && styles.pickerDotActive]} />
+                    <TouchableOpacity
+                      style={[styles.checkbox, task.completed && styles.checkboxDone]}
+                      onPress={() => toggleTaskComplete(task.id)}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      {task.completed && <Text style={styles.checkmark}>✓</Text>}
+                    </TouchableOpacity>
                     <Text style={[styles.pickerItemText, task.id === activeDailyTaskId && styles.pickerItemTextActive]} numberOfLines={1}>
                       {task.title}
                     </Text>
@@ -243,7 +297,7 @@ export function TimerScreen() {
           ) : (
             <ScrollView style={styles.pickerList} showsVerticalScrollIndicator={false}>
               {activeGoals.length === 0 && (
-                <Text style={styles.emptyText}>No active goals — create one from the web dashboard</Text>
+                <Text style={styles.emptyText}>No goals yet — add one above</Text>
               )}
               {activeGoals.map(goal => {
                 const progress = goal.estimated_sessions_current > 0
@@ -511,5 +565,62 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingVertical: spacing.xl,
     lineHeight: 20,
+  },
+
+  // Add row
+  addRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  addInput: {
+    flex: 1,
+    backgroundColor: colors.bgCard,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
+    fontSize: fontSize.md,
+    color: colors.text,
+  },
+  addButton: {
+    width: 42,
+    height: 42,
+    borderRadius: radius.md,
+    backgroundColor: colors.cyan,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addButtonDisabled: {
+    backgroundColor: colors.cyanDim,
+    opacity: 0.5,
+  },
+  addButtonText: {
+    fontSize: fontSize.xl,
+    fontWeight: '600',
+    color: '#fff',
+    lineHeight: 26,
+  },
+
+  // Checkbox
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: colors.borderLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxDone: {
+    backgroundColor: colors.green,
+    borderColor: colors.green,
+  },
+  checkmark: {
+    fontSize: 12,
+    color: '#fff',
+    fontWeight: '700',
+    lineHeight: 14,
   },
 });
